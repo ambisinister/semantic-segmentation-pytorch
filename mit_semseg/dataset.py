@@ -2,11 +2,28 @@ import os
 import json
 import torch
 from torchvision import transforms
+import torch.nn.functional as F
 import numpy as np
 from PIL import Image
 
 
 def imresize(im, size, interp='bilinear'):
+    if interp in ['bilinear', 'nearest', 'bicubic']:
+        torchify = torch.Tensor(np.array(im)).unsqueeze(0)
+
+        if len(torchify.size()) == 4: #3 channel image
+            interped = F.interpolate(torchify.permute(0,3,1,2), size=(size[1],size[0]), mode=interp)
+            interped = interped[0].permute(1,2,0).type(torch.uint8).numpy()
+        else: #1 channel image
+            interped = F.interpolate(torchify.unsqueeze(0), size=(size[1],size[0]), mode=interp)
+            interped = interped[0][0].type(torch.uint8).numpy()
+
+        return Image.fromarray(interped)
+
+    else:
+        raise Exception('resample method undefined!')
+
+def imresize_old(im, size, interp='bilinear'):
     if interp == 'nearest':
         resample = Image.NEAREST
     elif interp == 'bilinear':

@@ -1,5 +1,35 @@
 # Semantic Segmentation on MIT ADE20K dataset in PyTorch
 
+## This Fork's Contributions
+
+This simple fork adds two features previously unsupported in the CSAIL implementation:
+1. functionality for exporting segmentation models via torchscript
+2. a new imresize function for use in training, using F.interpolate
+
+1) is pretty self explanatory
+
+To export to torchscript you will need:
+- a config file
+- checkpoints for encoder/decoder
+- a path to an example image
+
+Usage:
+```
+python export.py --img='./data/my_dataset/example.png' --cfg='./config/my_config.yaml'
+```
+
+The above will save your model as ./exported_model.pth. If you want to change this you can pass --saveas along with a target path
+
+2) requires some brief mention
+
+If you natively train using CSAIL's repo and export via torchscript, you will see ever-so-slightly different results for your exported model compared to in eval.py. This is because the repo uses PIL imresize, which operates on uint8 space, and F.interpolate operates on float32 space. F.interpolate does not operate upon uint8 images (it will crash due to implementation error), so you need to cast your uint8 image to float32, then cast it back to uint8. This will provide different results compared to imresize, because the cast will /truncate/ the values, whereas (to my knowledge) imresize will /round/ the values. In areas with high uncertainty, several pixels changing by a value of 1 can cause substantial differences in the output.
+
+My solution to this is to just change the imresize function in train.py to use this casting hack also, rather than to write code which perfectly emulates imresize. It's a little hacky, but it works, and the performance of the models trained this way do not seem to suffer in any way. Importantly, this makes the behavior of the traced model the same as the evaluated model, which means your metrics won't be completely different / unknown after exporting.
+
+Let me know if there are any problems. 
+
+## Original Repo's README
+
 This is a PyTorch implementation of semantic segmentation models on MIT ADE20K scene parsing dataset (http://sceneparsing.csail.mit.edu/).
 
 ADE20K is the largest open source dataset for semantic segmentation and scene parsing, released by MIT Computer Vision team. Follow the link below to find the repository for our dataset and implementations on Caffe and Torch7:
